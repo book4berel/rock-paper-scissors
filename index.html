@@ -390,7 +390,33 @@
         </div>
         <button class="mode-button" type="submit">Sign in</button>
         <button id="account-mode-toggle" class="password-toggle" type="button">Create an account</button>
+        <button id="forgot-password-toggle" class="password-toggle" type="button">Forgot password?</button>
         <p id="sign-in-error" role="alert"></p>
+        <p id="sign-in-status" class="sign-in-note" role="status" aria-live="polite"></p>
+      </form>
+      <form id="password-reset-request-form" class="sign-in-form" hidden>
+        <p class="sign-in-note">Enter the email address linked to your account and we’ll send a reset link.</p>
+        <label for="password-reset-email">Email address</label>
+        <input id="password-reset-email" name="password-reset-email" type="email" maxlength="254" autocomplete="email" required>
+        <button class="mode-button" type="submit">Send reset link</button>
+        <button id="password-reset-back" class="password-toggle" type="button">Back to sign in</button>
+        <p id="password-reset-message" class="sign-in-note" role="status" aria-live="polite"></p>
+      </form>
+      <form id="password-update-form" class="sign-in-form" hidden>
+        <p class="sign-in-note">Choose a new password with at least 8 characters.</p>
+        <label for="password-update-password">New password</label>
+        <div class="password-input-wrapper">
+          <input id="password-update-password" name="password-update-password" type="password" minlength="8" autocomplete="new-password" required>
+          <button class="password-toggle" type="button" data-password-toggle="password-update-password" aria-label="Show password" aria-pressed="false">Show</button>
+        </div>
+        <label for="password-update-confirm">Confirm new password</label>
+        <div class="password-input-wrapper">
+          <input id="password-update-confirm" name="password-update-confirm" type="password" minlength="8" autocomplete="new-password" required>
+          <button class="password-toggle" type="button" data-password-toggle="password-update-confirm" aria-label="Show password" aria-pressed="false">Show</button>
+        </div>
+        <button class="mode-button" type="submit">Update password</button>
+        <button id="password-update-back" class="password-toggle" type="button">Back to sign in</button>
+        <p id="password-update-message" class="sign-in-note" role="status" aria-live="polite"></p>
       </form>
     </section>
 
@@ -516,6 +542,9 @@
       : null;
     let playerTwoClient = null;
     let signInMode = "signin";
+    let passwordRecoveryMode =
+      new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery" ||
+      new URLSearchParams(window.location.search).get("type") === "recovery";
 
     // Defines each move with one consistent label and emoji
     const options = {
@@ -762,6 +791,8 @@
       document.querySelector("#profile-password-confirm-field").hidden = !creating;
       document.querySelector("#profile-password-confirm").required = creating;
       document.querySelector("#account-mode-toggle").hidden = signInSlot === "player2";
+      document.querySelector("#forgot-password-toggle").hidden =
+        creating || signInSlot === "player2" || passwordRecoveryMode;
       document.querySelector("#profile-password").autocomplete =
         creating ? "new-password" : "current-password";
       document.querySelector("#profile-password-hint").textContent =
@@ -771,6 +802,44 @@
       document.querySelector("#account-mode-toggle").textContent =
         creating ? "Already have an account? Sign in" : "Create an account";
       document.querySelector("#sign-in-error").textContent = "";
+      document.querySelector("#sign-in-status").textContent = "";
+    }
+
+    function showPasswordRecoveryForm() {
+      passwordRecoveryMode = true;
+      signInMode = "signin";
+      document.querySelector("#sign-in-screen").hidden = false;
+      document.querySelector("#home-screen").hidden = true;
+      document.querySelector("#sign-in-form").hidden = true;
+      document.querySelector("#password-reset-request-form").hidden = true;
+      document.querySelector("#password-update-form").hidden = false;
+      document.querySelector("#forgot-password-toggle").hidden = true;
+      document.querySelector("#sign-in-heading").textContent = "Set a new password";
+      document.querySelector("#account-mode-note").textContent =
+        "Enter and confirm your new password.";
+      document.querySelector("#password-update-message").textContent = "";
+      document.querySelector("#subtitle").textContent = "Reset your account password.";
+      document.querySelector("#password-update-password").focus();
+    }
+
+    async function returnFromPasswordRecovery(statusMessage = "") {
+      if (supabaseClient) {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) {
+          throw error;
+        }
+      }
+      passwordRecoveryMode = false;
+      window.history.replaceState(null, document.title, window.location.pathname);
+      document.querySelector("#password-update-form").hidden = true;
+      document.querySelector("#password-reset-request-form").hidden = true;
+      document.querySelector("#sign-in-form").hidden = false;
+      document.querySelector("#profile-name").value = "";
+      document.querySelector("#profile-password").value = "";
+      document.querySelector("#profile-password-confirm").value = "";
+      setAccountMode("signin");
+      document.querySelector("#sign-in-status").textContent = statusMessage;
+      document.querySelector("#profile-name").focus();
     }
 
     async function authenticateAccount(client, identifier, password, confirmation, email) {
@@ -1051,20 +1120,30 @@
           "Release setup is incomplete. Add your Supabase URL and public anon key to supabase-config.js.";
         return;
       }
+      if (passwordRecoveryMode) {
+        showPasswordRecoveryForm();
+        return;
+      }
       try {
         const { data, error } = await supabaseClient.auth.getSession();
         if (error) {
           throw error;
         }
-        if (!data.session) {
+        if (passwordRecoveryMode || !data.session) {
           return;
         }
         const profile = await getAccountProfile(supabaseClient, data.session.user);
+        if (passwordRecoveryMode) {
+          return;
+        }
         activeProfileId = profile.id;
         activeProfileUsername = profile.username;
         activeProfileIsAdmin = profile.role === "admin";
         if (!await loadMatchRecord()) {
           throw new Error("Your saved account stats could not be loaded.");
+        }
+        if (passwordRecoveryMode) {
+          return;
         }
         document.querySelector("#profile-greeting").textContent =
           `Signed in as ${activeProfileUsername}${activeProfileIsAdmin ? " (ADMIN)" : ""}`;
@@ -1109,6 +1188,93 @@
       document.querySelector("#profile-password-confirm").value = "";
       document.querySelector("#account-email").value = "";
       setAccountMode(signInMode === "signin" ? "signup" : "signin");
+    });
+    document.querySelector("#forgot-password-toggle").addEventListener("click", () => {
+      if (signInMode !== "signin" || signInSlot === "player2") {
+        return;
+      }
+      const identifier = document.querySelector("#profile-name").value.trim();
+      document.querySelector("#password-reset-email").value =
+        identifier.includes("@") ? identifier : "";
+      document.querySelector("#password-reset-message").textContent = "";
+      document.querySelector("#sign-in-form").hidden = true;
+      document.querySelector("#password-reset-request-form").hidden = false;
+      document.querySelector("#password-reset-email").focus();
+    });
+    document.querySelector("#password-reset-back").addEventListener("click", () => {
+      document.querySelector("#password-reset-request-form").hidden = true;
+      document.querySelector("#sign-in-form").hidden = false;
+      document.querySelector("#password-reset-message").textContent = "";
+      document.querySelector("#profile-name").focus();
+    });
+    document.querySelector("#password-reset-request-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      document.querySelector("#password-reset-message").textContent = "";
+      try {
+        ensureSupabaseConfigured();
+        const email = document.querySelector("#password-reset-email").value.trim();
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}${window.location.pathname}`
+        });
+        if (error) {
+          throw error;
+        }
+        document.querySelector("#password-reset-message").textContent =
+          "If an account exists for that email, a password reset link has been sent.";
+      } catch (error) {
+        console.error("Could not request a password reset.", error);
+        document.querySelector("#password-reset-message").textContent =
+          `Could not send a password reset email: ${error.message}`;
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+    document.querySelector("#password-update-back").addEventListener("click", async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await returnFromPasswordRecovery();
+      } catch (error) {
+        console.error("Could not leave password recovery.", error);
+        document.querySelector("#password-update-message").textContent =
+          `Could not return to sign in: ${error.message}`;
+      } finally {
+        button.disabled = false;
+      }
+    });
+    document.querySelector("#password-update-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const submitButton = form.querySelector('button[type="submit"]');
+      const password = document.querySelector("#password-update-password").value;
+      const confirmation = document.querySelector("#password-update-confirm").value;
+      submitButton.disabled = true;
+      document.querySelector("#password-update-message").textContent = "";
+      let passwordChanged = false;
+      try {
+        ensureSupabaseConfigured();
+        if (password.length < 8) {
+          throw new Error("Choose a password with at least 8 characters.");
+        }
+        if (password !== confirmation) {
+          throw new Error("The passwords do not match.");
+        }
+        const { error } = await supabaseClient.auth.updateUser({ password });
+        if (error) {
+          throw error;
+        }
+        passwordChanged = true;
+        await returnFromPasswordRecovery("Password updated. Sign in with your new password.");
+      } catch (error) {
+        console.error("Could not update the account password.", error);
+        document.querySelector("#password-update-message").textContent = passwordChanged
+          ? `Password updated, but the recovery session could not be closed: ${error.message}`
+          : error.message;
+      } finally {
+        submitButton.disabled = false;
+      }
     });
     document.querySelector("#sign-in-form").addEventListener("submit", async event => {
       event.preventDefault();
@@ -1561,6 +1727,16 @@
     loadThemeColor();
     loadSoundSetting();
     setAccountMode("signin");
+    if (supabaseClient) {
+      supabaseClient.auth.onAuthStateChange(event => {
+        if (event === "PASSWORD_RECOVERY") {
+          showPasswordRecoveryForm();
+        }
+      });
+    }
+    if (passwordRecoveryMode) {
+      showPasswordRecoveryForm();
+    }
     restoreAccountSession();
     function saveSoundSetting() {
       try {
