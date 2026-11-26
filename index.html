@@ -1,0 +1,1651 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17152b">
+  <title>Rock Paper Scissors</title>
+  <style>
+    /* Theme and base page colors for a dark, game-like look */
+    :root {
+      color-scheme: dark;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      --theme-hue: 264;
+      --page-bg: #17152b;
+      --page-glow: #302748;
+      --panel-border: hsl(var(--theme-hue) 24% 44%);
+      --panel-bg: hsl(var(--theme-hue) 29% 18%);
+      --surface-border: hsl(var(--theme-hue) 22% 35%);
+      --surface-bg: hsl(var(--theme-hue) 34% 13%);
+      --accent: hsl(var(--theme-hue) 100% 83%);
+      --accent-bright: hsl(var(--theme-hue) 90% 90%);
+      --text-strong: hsl(var(--theme-hue) 38% 91%);
+      --text-muted: hsl(var(--theme-hue) 18% 78%);
+      --border-muted: hsl(var(--theme-hue) 20% 42%);
+      --button-bg: hsl(var(--theme-hue) 28% 26%);
+      --button-hover: hsl(var(--theme-hue) 30% 36%);
+      background: var(--page-bg);
+      color: #f7f3ff;
+    }
+
+    /* Makes all elements size consistently and centers the game on the page */
+    * { box-sizing: border-box; }
+    /* Forces content marked hidden to stay out of view, including sections using grid or flex layouts */
+    [hidden] { display: none !important; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 1.5rem;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--page-glow) 0, transparent 60%),
+        var(--page-bg);
+    }
+    /* Main game card container with border, rounded corners, and shadow */
+    main {
+      width: min(100%, 34rem);
+      padding: clamp(1.25rem, 5vw, 2.5rem);
+      border: 1px solid var(--panel-border);
+      border-radius: 1.5rem;
+      background: var(--panel-bg);
+      box-shadow: 0 1.5rem 5rem #08071499;
+      text-align: center;
+    }
+    /* Small heading label above the title */
+    .eyebrow {
+      margin: 0 0 .4rem;
+      color: var(--accent);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+    /* Large game title styling */
+    h1 {
+      margin: 0;
+      color: var(--accent-bright);
+      font-size: clamp(2rem, 9vw, 3.2rem);
+    }
+    /* Subtitle text under the title */
+    .subtitle { margin: .6rem 0 1rem; color: var(--text-muted); }
+    .settings-menu { margin: 0 0 1.5rem; text-align: left; }
+    .settings-menu summary {
+      padding: .65rem .8rem;
+      border: 1px solid var(--panel-border);
+      border-radius: .7rem;
+      background: var(--button-bg);
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .settings-menu summary:hover { background: var(--button-hover); }
+    .settings-content {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: .6rem;
+      margin-top: .5rem;
+      padding: .8rem;
+      border: 1px solid var(--surface-border);
+      border-radius: .7rem;
+      background: var(--surface-bg);
+    }
+    .settings-content label { color: var(--text-strong); font-weight: 700; }
+    .settings-content input[type="color"] { width: 3rem; height: 2rem; padding: .15rem; border: 1px solid var(--panel-border); border-radius: .4rem; background: var(--panel-bg); cursor: pointer; }
+    .settings-content input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); cursor: pointer; }
+    .settings-content input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); cursor: pointer; }
+    .settings-content output { color: var(--text-muted); font-size: .85rem; }
+    .settings-help, .settings-message { grid-column: 1 / -1; margin: 0; color: var(--text-muted); font-size: .8rem; }
+    /* Three-column score display layout */
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: .65rem;
+      margin-bottom: 1.5rem;
+    }
+    /* Individual score card styling */
+    .score {
+      padding: .8rem .4rem;
+      border: 1px solid var(--surface-border);
+      border-radius: .9rem;
+      background: var(--surface-bg);
+    }
+    .score span { display: block; color: var(--text-muted); font-size: .8rem; }
+    .score strong { display: block; margin-top: .15rem; color: var(--accent-bright); font-size: 1.7rem; }
+    .match-record { margin-bottom: 1.5rem; }
+    .record-heading { margin: 0 0 .25rem; color: var(--text-strong); font-weight: 800; }
+    .record-note, [data-record-storage-status] { margin: 0 0 .65rem; color: var(--text-muted); font-size: .8rem; }
+    [data-record-storage-status]:empty { display: none; }
+    .record-toggle {
+      width: 100%;
+      padding: .8rem;
+      border: 1px solid var(--panel-border);
+      border-radius: .8rem;
+      background: var(--button-bg);
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .record-toggle:hover { background: var(--button-hover); border-color: var(--accent); }
+    .sign-in-form { display: grid; gap: .8rem; text-align: left; }
+    .sign-in-form label { color: var(--text-strong); font-weight: 700; }
+    .sign-in-form input {
+      width: 100%;
+      margin-top: .35rem;
+      padding: .8rem;
+      border: 1px solid var(--panel-border);
+      border-radius: .7rem;
+      background: var(--surface-bg);
+      color: #f7f3ff;
+      font: inherit;
+    }
+    .password-input-wrapper { display: flex; align-items: stretch; gap: .4rem; margin-top: .35rem; }
+    .password-input-wrapper input { flex: 1; min-width: 0; margin-top: 0; }
+    .password-toggle {
+      padding: .5rem .7rem;
+      border: 1px solid var(--panel-border);
+      border-radius: .6rem;
+      background: var(--button-bg);
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+    .password-toggle:hover { background: var(--button-hover); }
+    .password-fields { display: grid; gap: .8rem; }
+    .sign-in-note, #sign-in-error { margin: 0; color: var(--text-muted); font-size: .85rem; }
+    #sign-in-error { color: #ffb8b8; }
+    .profile-bar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+    #profile-greeting { margin: 0; color: var(--text-muted); }
+    #switch-account {
+      padding: .45rem .7rem;
+      border: 1px solid var(--border-muted);
+      border-radius: .7rem;
+      background: transparent;
+      color: var(--text-strong);
+      font: inherit;
+      cursor: pointer;
+    }
+    .admin-panel { padding: .9rem; border: 1px solid var(--panel-border); border-radius: .9rem; text-align: left; }
+    .admin-panel h2 { margin: 0 0 .4rem; color: var(--accent-bright); font-size: 1.25rem; }
+    .admin-panel-note { margin: 0 0 .8rem; color: var(--text-muted); font-size: .85rem; }
+    .admin-users { display: grid; gap: .6rem; }
+    .admin-user-card { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: center; padding: .7rem; border: 1px solid var(--surface-border); border-radius: .7rem; background: var(--surface-bg); }
+    .admin-user-card strong { overflow-wrap: anywhere; }
+    .admin-user-card button { padding: .45rem .6rem; border: 1px solid var(--panel-border); border-radius: .6rem; background: var(--button-bg); color: #fff; font: inherit; cursor: pointer; }
+    .admin-message { min-height: 1rem; margin: .5rem 0 0; color: var(--text-muted); font-size: .8rem; }
+    /* Label above the choice buttons */
+    .prompt { margin: 0 0 .8rem; color: var(--text-strong); font-weight: 700; }
+    /* Stacks the home-page mode buttons with space between them */
+    .home-actions { display: grid; gap: .8rem; }
+    .match-format {
+      margin: 0 0 .25rem;
+      padding: .8rem;
+      border: 1px solid var(--surface-border);
+      border-radius: .9rem;
+      text-align: left;
+    }
+    .match-format legend { padding: 0 .35rem; color: var(--text-strong); font-weight: 700; }
+    .match-format-options { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .match-format-option {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .7rem;
+      border: 1px solid var(--surface-border);
+      border-radius: .7rem;
+      background: var(--surface-bg);
+      color: #f7f3ff;
+      cursor: pointer;
+    }
+    .match-format-option input { accent-color: var(--accent); }
+    .match-format-option span { font-size: .9rem; }
+    /* Makes the game-mode choices look and behave like prominent buttons */
+    .mode-button {
+      padding: 1rem; /* Adds space inside each mode button */
+      border: 1px solid var(--panel-border); /* Draws a subtle theme outline */
+      border-radius: 1rem; /* Rounds the button corners */
+      background: var(--button-bg); /* Gives the button a dark theme fill */
+      color: #fff; /* Makes the button text white */
+      font: inherit; /* Uses the page's font */
+      font-weight: 800; /* Makes the main button text bold */
+      cursor: pointer; /* Shows that the button can be clicked */
+    }
+    /* Brightens a mode button when the pointer hovers over it */
+    .mode-button:hover { background: var(--button-hover); border-color: var(--accent); }
+    /* Styles the smaller description inside each mode button */
+    .mode-button span { display: block; margin-top: .3rem; color: var(--text-muted); font-size: .85rem; font-weight: 400; }
+    /* Row of player move buttons */
+    .choices {
+      display: flex;
+      justify-content: center;
+      gap: .75rem;
+    }
+    /* Styling for each move button including emoji and hover effect */
+    .choice {
+      flex: 1;
+      min-height: 6.2rem;
+      padding: .8rem .35rem;
+      border: 1px solid var(--panel-border);
+      border-radius: 1rem;
+      background: var(--button-bg);
+      color: #fff;
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    }
+    .choice:hover { transform: translateY(-4px); background: var(--button-hover); border-color: var(--accent); }
+    .choice:active { transform: translateY(0); }
+    .choice:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    /* Icon styling inside each choice button */
+    .emoji { display: block; margin-bottom: .35rem; font-size: 2rem; }
+    /* Countdown panel shown after both local players have chosen */
+    .reveal-countdown {
+      margin: 1.5rem 0 1rem;
+      padding: 1.25rem;
+      border: 1px solid var(--panel-border);
+      border-radius: 1rem;
+      background: var(--surface-bg);
+    }
+    .reveal-countdown p { margin: 0; color: var(--text-muted); font-weight: 700; }
+    .countdown-number {
+      display: block;
+      margin: .25rem 0;
+      color: var(--accent-bright);
+      font-size: 3rem;
+      font-weight: 900;
+      animation: countdown-pop .8s ease-in-out infinite;
+    }
+    .countdown-emojis { display: flex; justify-content: center; gap: 1.2rem; }
+    .countdown-emojis span {
+      display: inline-block;
+      font-size: 2rem;
+      animation: emoji-bounce .65s ease-in-out infinite alternate;
+    }
+    .countdown-emojis span:nth-child(2) { animation-delay: .15s; }
+    .countdown-emojis span:nth-child(3) { animation-delay: .3s; }
+    @keyframes countdown-pop {
+      50% { transform: scale(1.2); }
+    }
+    @keyframes emoji-bounce {
+      to { transform: translateY(-8px) rotate(8deg); }
+    }
+    /* Keyboard focus indicator for accessibility */
+    button:focus-visible { outline: 3px solid var(--accent-bright); outline-offset: 3px; }
+    #confetti {
+      position: fixed;
+      z-index: 10;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .confetti-piece {
+      position: absolute;
+      top: -1rem;
+      left: var(--confetti-left);
+      width: .65rem;
+      height: 1rem;
+      border-radius: .15rem;
+      background: var(--confetti-color);
+      animation: confetti-fall var(--confetti-duration) ease-in var(--confetti-delay) forwards;
+    }
+    .confetti-piece:nth-child(even) { border-radius: 50%; }
+    @keyframes confetti-fall {
+      to {
+        transform: translate3d(var(--confetti-drift), 110vh, 0) rotate(var(--confetti-rotation));
+      }
+    }
+    /* Arena showing player vs computer choices */
+    .arena {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: .5rem;
+      margin: 1.5rem 0 1rem;
+      padding: 1rem .5rem;
+      border: 1px solid var(--surface-border);
+      border-radius: 1rem;
+      background: var(--surface-bg);
+    }
+    /* Labels and large choice markers for both sides */
+    .fighter { color: var(--text-muted); font-size: .8rem; }
+    .fighter strong { display: block; margin-top: .35rem; color: #fff; font-size: clamp(1.4rem, 7vw, 2rem); }
+    /* Divider between player and computer */
+    .versus { color: var(--text-muted); font-size: .85rem; font-weight: 900; }
+    /* Result message after each round */
+    #result {
+      min-height: 1.7rem;
+      margin: .8rem 0 .25rem;
+      color: var(--accent-bright);
+      font-size: 1.2rem;
+      font-weight: 900;
+    }
+    /* Extra explanation under the result */
+    #detail { min-height: 1.3rem; margin: 0; color: var(--text-muted); font-size: .9rem; }
+    /* Reset button styling */
+    #reset {
+      margin-top: 1.4rem;
+      padding: .65rem 1rem;
+      border: 1px solid var(--border-muted);
+      border-radius: .7rem;
+      background: transparent;
+      color: var(--text-strong);
+      font: inherit;
+      font-size: .9rem;
+      cursor: pointer;
+    }
+    #reset:hover { background: var(--button-bg); }
+    /* Mobile layout adjustments for narrower screens */
+    @media (max-width: 380px) {
+      body { padding: .75rem; }
+      main { padding: 1.1rem .8rem; }
+      .choices { gap: .4rem; }
+      .choice { min-height: 5.5rem; font-size: .9rem; }
+    }
+    /* Reduces animations for users who prefer less motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; }
+      .countdown-number, .countdown-emojis span, .confetti-piece { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="confetti" aria-hidden="true"></div>
+  <main>
+    <!-- Home and game share the same title and introductory text -->
+    <p class="eyebrow">Ready, set, play</p>
+    <h1>Rock Paper Scissors</h1>
+    <p class="subtitle" id="subtitle">Sign in or create a player account.</p>
+
+    <section id="sign-in-screen" aria-labelledby="sign-in-heading">
+      <h2 id="sign-in-heading">Sign in to your player account</h2>
+      <p class="sign-in-note" id="account-mode-note">Use your username or email and password.</p>
+      <form id="sign-in-form" class="sign-in-form">
+        <label id="profile-name-label" for="profile-name">Username or email</label>
+        <input id="profile-name" name="profile-name" type="text" maxlength="254" autocomplete="username" required>
+        <div id="account-email-field" hidden>
+          <label for="account-email">Email address</label>
+          <input id="account-email" name="account-email" type="email" maxlength="254" autocomplete="email">
+        </div>
+        <div id="profile-password-fields" class="password-fields" hidden>
+          <div>
+            <label for="profile-password">Password</label>
+            <div class="password-input-wrapper">
+              <input id="profile-password" name="profile-password" type="password" minlength="8" autocomplete="current-password">
+              <button class="password-toggle" type="button" data-password-toggle="profile-password" aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <div id="profile-password-confirm-field" hidden>
+            <label for="profile-password-confirm">Confirm password</label>
+            <div class="password-input-wrapper">
+              <input id="profile-password-confirm" name="profile-password-confirm" type="password" minlength="8" autocomplete="new-password">
+              <button class="password-toggle" type="button" data-password-toggle="profile-password-confirm" aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <p id="profile-password-hint" class="sign-in-note"></p>
+        </div>
+        <button class="mode-button" type="submit">Sign in</button>
+        <button id="account-mode-toggle" class="password-toggle" type="button">Create an account</button>
+        <p id="sign-in-error" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- Home page offers computer or local two-player matches -->
+    <section id="home-screen" class="home-actions" aria-label="Choose a game mode" hidden>
+      <div class="profile-bar">
+        <p id="profile-greeting"></p>
+        <button id="switch-account" type="button">Switch account</button>
+      </div>
+      <section id="admin-panel" class="admin-panel" aria-labelledby="admin-panel-heading" hidden>
+        <h2 id="admin-panel-heading">Admin: account management</h2>
+        <p class="admin-panel-note">View player accounts and reset any account password.</p>
+        <div id="admin-user-list" class="admin-users"></div>
+        <p id="admin-panel-message" class="admin-message" role="status" aria-live="polite"></p>
+      </section>
+      <details class="settings-menu">
+        <summary>Settings</summary>
+        <div class="settings-content">
+          <label for="page-color">Background color</label>
+          <input id="page-color" type="color" value="#17152b" aria-describedby="settings-help settings-message">
+          <label for="theme-color">Game color</label>
+          <input id="theme-color" type="color" value="#8b5cf6" aria-describedby="settings-help settings-message">
+          <label for="sound-enabled">Sound effects</label>
+          <input id="sound-enabled" type="checkbox" checked aria-describedby="settings-help settings-message">
+          <label for="sound-volume">Sound volume</label>
+          <output id="sound-volume-value" for="sound-volume">100%</output>
+          <input id="sound-volume" type="range" min="0" max="100" step="1" value="100" aria-label="Sound volume" aria-describedby="settings-help settings-message">
+          <p id="settings-help" class="settings-help">Choose the page and game colors, or adjust and turn sound effects on or off. Your choices are saved in this browser.</p>
+          <p id="settings-message" class="settings-message" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+      <button id="record-toggle" class="record-toggle" type="button" aria-expanded="false" aria-controls="match-record">
+        Show stats
+      </button>
+      <section id="match-record" class="match-record" aria-label="Overall match record" hidden>
+        <p class="record-heading">Overall record</p>
+        <p class="record-note">Totals across computer and two-player modes.</p>
+        <section class="scoreboard" aria-label="Cumulative match results">
+          <div class="score"><span>Matches won: Player / Player 1</span><strong data-record="wins">0</strong></div>
+          <div class="score"><span>Tied rounds</span><strong data-record="ties">0</strong></div>
+          <div class="score"><span>Matches won: Computer / Player 2</span><strong data-record="losses">0</strong></div>
+        </section>
+        <p class="record-heading">Round results</p>
+        <section class="scoreboard" aria-label="Cumulative round results">
+          <div class="score"><span>Rounds won: Player / Player 1</span><strong data-record="player-round-wins">0</strong></div>
+          <div class="score"><span>Tied rounds</span><strong data-record="ties">0</strong></div>
+          <div class="score"><span>Rounds won: Computer / Player 2</span><strong data-record="computer-round-wins">0</strong></div>
+        </section>
+        <p data-record-storage-status role="status" aria-live="polite"></p>
+      </section>
+      <fieldset class="match-format">
+        <legend>Choose match length</legend>
+        <div class="match-format-options">
+          <label class="match-format-option">
+            <input type="radio" name="match-format" value="first-to-3" checked>
+            <span>First to 3 wins</span>
+          </label>
+          <label class="match-format-option">
+            <input type="radio" name="match-format" value="single-round">
+            <span>1 round</span>
+          </label>
+        </div>
+      </fieldset>
+      <button class="mode-button" type="button" data-mode="computer">
+        Play against the computer
+        <span>Practice your moves against the computer. Choose a match length above.</span>
+      </button>
+      <button class="mode-button" type="button" data-mode="two-player">
+        Play with two players
+        <span>Take turns on this device. First to 3 wins or play one round.</span>
+      </button>
+    </section>
+
+    <!-- Game screen is shown after choosing a mode -->
+    <section id="game-screen" hidden>
+      <section class="scoreboard" aria-label="Current match score">
+        <div class="score"><span id="player-score-label">You</span><strong id="player-score">0</strong></div>
+        <div class="score"><span>Ties</span><strong id="tie-score">0</strong></div>
+        <div class="score"><span id="computer-score-label">Computer</span><strong id="computer-score">0</strong></div>
+      </section>
+
+      <!-- Prompts the active player to choose a move -->
+      <p class="prompt" id="prompt">Make your move</p>
+      <div class="choices" aria-label="Choose rock, paper, or scissors">
+        <button class="choice" type="button" data-choice="rock"><span class="emoji" aria-hidden="true">🪨</span>Rock</button>
+        <button class="choice" type="button" data-choice="paper"><span class="emoji" aria-hidden="true">📄</span>Paper</button>
+        <button class="choice" type="button" data-choice="scissors"><span class="emoji" aria-hidden="true">✂️</span>Scissors</button>
+      </div>
+
+      <!-- Shows animated move emojis and a countdown before revealing both choices -->
+      <section id="reveal-countdown" class="reveal-countdown" aria-label="Round reveal" aria-live="polite" hidden>
+        <p>Choices locked in! Revealing in</p>
+        <strong id="countdown-number" class="countdown-number">3</strong>
+        <div class="countdown-emojis" aria-hidden="true">
+          <span>🪨</span>
+          <span>📄</span>
+          <span>✂️</span>
+        </div>
+      </section>
+
+      <!-- Displays the latest choices -->
+      <section id="arena" class="arena" aria-label="Last round">
+        <div class="fighter"><span id="player-one-label">YOU</span><strong id="player-pick">❔</strong></div>
+        <div class="versus">VS</div>
+        <div class="fighter"><span id="player-two-label">COMPUTER</span><strong id="computer-pick">❔</strong></div>
+      </section>
+      <p id="result" role="status" aria-live="polite">Make your move!</p>
+      <p id="detail">First to whatever score you like wins—keep playing!</p>
+      <button id="reset" type="button">Reset score</button>
+      <button id="home-button" type="button">Change mode (after match)</button>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js"></script>
+  <script>
+    "use strict"; // Makes JavaScript report certain unsafe mistakes instead of silently allowing them.
+
+    const SUPABASE_URL = window.RPS_SUPABASE_URL || "";
+    const SUPABASE_ANON_KEY = window.RPS_SUPABASE_ANON_KEY || "";
+    const supabaseClient = window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+    let playerTwoClient = null;
+    let signInMode = "signin";
+
+    // Defines each move with one consistent label and emoji
+    const options = {
+      rock: { label: "Rock", emoji: "🪨" }, // The single emoji used for rock.
+      paper: { label: "Paper", emoji: "📄" }, // The single emoji used for paper.
+      scissors: { label: "Scissors", emoji: "✂️" } // The single emoji used for scissors.
+    };
+
+    // Stores which move beats another in the game rules
+    const beats = { rock: "scissors", paper: "rock", scissors: "paper" };
+
+    // Tracks the running score for player, ties, and computer
+    const scores = { player: 0, tie: 0, computer: 0 };
+
+    let lastComputerChoice = null; // Remembers the computer's previous move to avoid immediate repeats.
+    let gameMode = null; // Holds "computer" or "two-player" after the player selects a mode on the home screen.
+    let firstPlayerChoice = null; // Temporarily stores Player 1's move until Player 2 has chosen.
+    let activePlayer = 1; // Tracks which local player should choose next.
+    let matchFinished = false; // Prevents more moves after a two-player match has been won.
+    let matchFormat = "first-to-3"; // Stores whether the match ends after one round or three wins.
+    const WINS_TO_TAKE_MATCH = 3; // Three round wins are needed to win the match.
+    const CONFETTI_COLORS = ["#ff5d8f", "#ffd166", "#06d6a0", "#4cc9f0", "#b388ff"];
+    const ACCOUNT_USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,24}$/;
+    const MATCH_RECORD_TABLE = "match_records";
+    const THEME_COLOR_STORAGE_KEY = "rock-paper-scissors-theme-color";
+    const PAGE_BACKGROUND_COLOR_STORAGE_KEY = "rock-paper-scissors-page-color";
+    const SOUND_ENABLED_STORAGE_KEY = "rock-paper-scissors-sound-enabled";
+    const SOUND_VOLUME_STORAGE_KEY = "rock-paper-scissors-sound-volume";
+    const DEFAULT_THEME_COLOR = "#8b5cf6";
+    const DEFAULT_PAGE_BACKGROUND_COLOR = "#17152b";
+    const DEFAULT_SOUND_VOLUME = 100;
+    let soundEnabled = true;
+    let soundVolume = DEFAULT_SOUND_VOLUME;
+    let audioContext = null;
+    let audioErrorReported = false;
+    let activeProfileId = null;
+    let activeProfileUsername = null;
+    let playerTwoUsername = null;
+    let signInSlot = "player1";
+    let activeProfileIsAdmin = false;
+    const matchRecord = {
+      wins: 0,
+      losses: 0,
+      tiedRounds: 0,
+      playerRoundWins: 0,
+      computerRoundWins: 0
+    };
+
+    // Applies the chosen color's hue to the game's background, surfaces, and accents
+    function applyThemeColor(color) {
+      const red = Number.parseInt(color.slice(1, 3), 16) / 255;
+      const green = Number.parseInt(color.slice(3, 5), 16) / 255;
+      const blue = Number.parseInt(color.slice(5, 7), 16) / 255;
+      const maximum = Math.max(red, green, blue);
+      const minimum = Math.min(red, green, blue);
+      const difference = maximum - minimum;
+      let hue = 0;
+
+      if (difference !== 0) {
+        if (maximum === red) {
+          hue = 60 * (((green - blue) / difference) % 6);
+        } else if (maximum === green) {
+          hue = 60 * ((blue - red) / difference + 2);
+        } else {
+          hue = 60 * ((red - green) / difference + 4);
+        }
+      }
+
+      document.documentElement.style.setProperty("--theme-hue", String((hue + 360) % 360));
+    }
+
+    function toHexChannel(value) {
+      return Math.max(0, Math.min(255, value)).toString(16).padStart(2, "0");
+    }
+
+    function mixHexColors(baseHex, blendHex, weight) {
+      const base = baseHex.replace("#", "");
+      const blend = blendHex.replace("#", "");
+      const mixed = {
+        r: Math.round(parseInt(base.slice(0, 2), 16) * (1 - weight) + parseInt(blend.slice(0, 2), 16) * weight),
+        g: Math.round(parseInt(base.slice(2, 4), 16) * (1 - weight) + parseInt(blend.slice(2, 4), 16) * weight),
+        b: Math.round(parseInt(base.slice(4, 6), 16) * (1 - weight) + parseInt(blend.slice(4, 6), 16) * weight)
+      };
+      return `#${toHexChannel(mixed.r)}${toHexChannel(mixed.g)}${toHexChannel(mixed.b)}`;
+    }
+
+    // Applies the selected page background color while keeping the game card theme independent.
+    function applyPageColor(color) {
+      document.documentElement.style.setProperty("--page-bg", color);
+      document.documentElement.style.setProperty("--page-glow", mixHexColors(color, "#ffffff", 0.28));
+    }
+
+    // Loads the saved page background color
+    function loadPageColor() {
+      const picker = document.querySelector("#page-color");
+      let color = DEFAULT_PAGE_BACKGROUND_COLOR;
+      try {
+        const savedColor = window.localStorage.getItem(PAGE_BACKGROUND_COLOR_STORAGE_KEY);
+        if (savedColor !== null) {
+          if (!/^#[0-9a-f]{6}$/i.test(savedColor)) {
+            throw new Error("The saved page color is invalid.");
+          }
+          color = savedColor;
+        }
+      } catch (error) {
+        console.error("Could not load the saved page color.", error);
+        document.querySelector("#settings-message").textContent =
+          `Saved page color could not be loaded: ${error.message}`;
+      }
+
+      picker.value = color;
+      applyPageColor(color);
+    }
+
+    // Loads the saved game color
+    function loadThemeColor() {
+      const picker = document.querySelector("#theme-color");
+      let color = DEFAULT_THEME_COLOR;
+      try {
+        const savedColor = window.localStorage.getItem(THEME_COLOR_STORAGE_KEY);
+        if (savedColor !== null) {
+          if (!/^#[0-9a-f]{6}$/i.test(savedColor)) {
+            throw new Error("The saved game color is invalid.");
+          }
+          color = savedColor;
+        }
+      } catch (error) {
+        console.error("Could not load the saved game color.", error);
+        document.querySelector("#settings-message").textContent =
+          `Saved game color could not be loaded: ${error.message}`;
+      }
+
+      picker.value = color;
+      applyThemeColor(color);
+    }
+
+    function loadSoundSetting() {
+      const setting = document.querySelector("#sound-enabled");
+      const volumeSetting = document.querySelector("#sound-volume");
+      try {
+        const savedSetting = window.localStorage.getItem(SOUND_ENABLED_STORAGE_KEY);
+        if (savedSetting !== null && savedSetting !== "true" && savedSetting !== "false") {
+          throw new Error("The saved sound setting is invalid.");
+        }
+        soundEnabled = savedSetting === null || savedSetting === "true";
+        const savedVolume = window.localStorage.getItem(SOUND_VOLUME_STORAGE_KEY);
+        if (savedVolume !== null && (!/^(100|[1-9]?[0-9])$/.test(savedVolume))) {
+          throw new Error("The saved sound volume is invalid.");
+        }
+        soundVolume = savedVolume === null ? DEFAULT_SOUND_VOLUME : Number(savedVolume);
+      } catch (error) {
+        console.error("Could not load saved sound settings.", error);
+        document.querySelector("#settings-message").textContent =
+          `Sound settings could not be loaded: ${error.message}`;
+      }
+
+      setting.checked = soundEnabled;
+      volumeSetting.value = soundVolume;
+      document.querySelector("#sound-volume-value").textContent = `${soundVolume}%`;
+    }
+
+    async function playSound(notes) {
+      if (!soundEnabled || soundVolume === 0) {
+        return;
+      }
+
+      try {
+        if (!audioContext) {
+          if (!window.AudioContext) {
+            throw new Error("This browser does not support game sounds.");
+          }
+          audioContext = new window.AudioContext();
+        }
+        if (audioContext.state === "suspended") {
+          await audioContext.resume();
+        }
+
+        const startTime = audioContext.currentTime;
+        notes.forEach(note => {
+          const oscillator = audioContext.createOscillator();
+          const volume = audioContext.createGain();
+          const noteStart = startTime + note.delay;
+          oscillator.type = "triangle";
+          oscillator.frequency.setValueAtTime(note.frequency, noteStart);
+          volume.gain.setValueAtTime(0.0001, noteStart);
+          volume.gain.exponentialRampToValueAtTime(0.8 * soundVolume / 100, noteStart + 0.02);
+          volume.gain.exponentialRampToValueAtTime(0.0001, noteStart + note.duration);
+          oscillator.connect(volume);
+          volume.connect(audioContext.destination);
+          oscillator.start(noteStart);
+          oscillator.stop(noteStart + note.duration);
+        });
+      } catch (error) {
+        if (!audioErrorReported) {
+          audioErrorReported = true;
+          console.error("Could not play game sounds.", error);
+          document.querySelector("#settings-message").textContent =
+            `Sound could not be played: ${error.message}`;
+        }
+      }
+    }
+
+    function playRoundSound(outcome) {
+      const winTarget = matchFormat === "single-round" ? 1 : WINS_TO_TAKE_MATCH;
+      if (scores.player >= winTarget || scores.computer >= winTarget) {
+        return;
+      }
+
+      const notes = outcome === "win"
+        ? [784, 988, 1175].map((frequency, index) => ({ frequency, delay: index * 0.1, duration: 0.16 }))
+        : outcome === "tie"
+          ? [{ frequency: 392, delay: 0, duration: 0.2 }, { frequency: 392, delay: 0.22, duration: 0.2 }]
+          : [311, 233].map((frequency, index) => ({ frequency, delay: index * 0.14, duration: 0.2 }));
+      playSound(notes);
+    }
+
+    function ensureSupabaseConfigured() {
+      if (!supabaseClient) {
+        throw new Error("The game has not been connected to Supabase yet. Configure supabase-config.js.");
+      }
+    }
+
+    function setAccountMode(mode) {
+      signInMode = mode;
+      const creating = mode === "signup";
+      document.querySelector("#sign-in-heading").textContent =
+        signInSlot === "player2"
+          ? "Player 2: sign in to an account"
+          : creating ? "Create a player account" : "Sign in to your player account";
+      document.querySelector("#account-mode-note").textContent = signInSlot === "player2"
+        ? "Player 2 must sign in to an existing, email-confirmed account."
+        : creating
+        ? "Choose a username, email, and password. You can sign in later with either username or email."
+        : "Use your username or email and password.";
+      document.querySelector("#profile-name-label").textContent = creating
+        ? "Player username"
+        : "Username or email";
+      document.querySelector("#profile-name").maxLength = creating ? 24 : 254;
+      document.querySelector("#profile-name").autocomplete = "username";
+      document.querySelector("#account-email-field").hidden = !creating;
+      document.querySelector("#account-email").required = creating;
+      document.querySelector("#profile-password-fields").hidden = false;
+      document.querySelector("#profile-password").required = true;
+      document.querySelector("#profile-password-confirm-field").hidden = !creating;
+      document.querySelector("#profile-password-confirm").required = creating;
+      document.querySelector("#account-mode-toggle").hidden = signInSlot === "player2";
+      document.querySelector("#profile-password").autocomplete =
+        creating ? "new-password" : "current-password";
+      document.querySelector("#profile-password-hint").textContent =
+        creating ? "Password must contain at least 8 characters." : "";
+      document.querySelector("#sign-in-form button[type='submit']").textContent =
+        creating ? "Create account" : "Sign in";
+      document.querySelector("#account-mode-toggle").textContent =
+        creating ? "Already have an account? Sign in" : "Create an account";
+      document.querySelector("#sign-in-error").textContent = "";
+    }
+
+    async function authenticateAccount(client, identifier, password, confirmation, email) {
+      ensureSupabaseConfigured();
+      if (signInMode === "signup") {
+        if (!ACCOUNT_USERNAME_PATTERN.test(identifier)) {
+          throw new Error("Use a username with 3-24 letters, numbers, underscores, or hyphens.");
+        }
+        if (password.length < 8) {
+          throw new Error("Choose a password with at least 8 characters.");
+        }
+        if (password !== confirmation) {
+          throw new Error("The passwords do not match.");
+        }
+        const { data, error } = await client.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { username: identifier.toLowerCase() },
+            emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+          }
+        });
+        if (error) {
+          throw error;
+        }
+        return { data, requiresEmailConfirmation: !data.session };
+      }
+
+      if (identifier.includes("@")) {
+        const { data, error } = await client.auth.signInWithPassword({
+          email: identifier,
+          password
+        });
+        if (error) {
+          throw error;
+        }
+        return { data, requiresEmailConfirmation: false };
+      }
+      if (!ACCOUNT_USERNAME_PATTERN.test(identifier)) {
+        throw new Error("Enter a valid username or email address.");
+      }
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/username-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ username: identifier, password })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.session) {
+        throw new Error(result.error || "Incorrect username or password.");
+      }
+      const { data, error } = await client.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token
+      });
+      if (error) {
+        throw error;
+      }
+      return { data, requiresEmailConfirmation: false };
+    }
+
+    async function getAccountProfile(client, user) {
+      const { data, error } = await client
+        .from("profiles")
+        .select("id, username, role")
+        .eq("id", user.id)
+        .single();
+      if (error) {
+        throw error;
+      }
+      return data;
+    }
+
+    // Loads the cumulative match record for the active account
+    async function loadMatchRecord() {
+      Object.assign(matchRecord, {
+        wins: 0,
+        losses: 0,
+        tiedRounds: 0,
+        playerRoundWins: 0,
+        computerRoundWins: 0
+      });
+
+      try {
+        if (!activeProfileId) {
+          throw new Error("No player account is signed in.");
+        }
+        const { data, error } = await supabaseClient
+          .from(MATCH_RECORD_TABLE)
+          .select("wins, losses, tied_rounds, player_round_wins, computer_round_wins")
+          .eq("account_id", activeProfileId)
+          .maybeSingle();
+        if (error) {
+          throw error;
+        }
+        if (data) {
+          Object.assign(matchRecord, {
+            wins: data.wins,
+            losses: data.losses,
+            tiedRounds: data.tied_rounds,
+            playerRoundWins: data.player_round_wins,
+            computerRoundWins: data.computer_round_wins
+          });
+        }
+      } catch (error) {
+        console.error("Could not load the saved match record.", error);
+        document.querySelectorAll("[data-record-storage-status]").forEach(status => {
+          status.textContent = `Saved totals could not be loaded: ${error.message}`;
+        });
+        return false;
+      }
+
+      updateMatchRecord();
+      return true;
+    }
+
+    // Saves the cumulative record and reports storage errors visibly
+    async function saveMatchRecord() {
+      updateMatchRecord();
+      try {
+        if (!activeProfileId) {
+          throw new Error("No player account is signed in.");
+        }
+        const { error } = await supabaseClient.from(MATCH_RECORD_TABLE).upsert({
+          account_id: activeProfileId,
+          wins: matchRecord.wins,
+          losses: matchRecord.losses,
+          tied_rounds: matchRecord.tiedRounds,
+          player_round_wins: matchRecord.playerRoundWins,
+          computer_round_wins: matchRecord.computerRoundWins
+        }, { onConflict: "account_id" });
+        if (error) {
+          throw error;
+        }
+        document.querySelectorAll("[data-record-storage-status]").forEach(status => {
+          status.textContent = "Totals are saved to your account.";
+        });
+      } catch (error) {
+        console.error("Could not save the match record.", error);
+        document.querySelectorAll("[data-record-storage-status]").forEach(status => {
+          status.textContent = `Totals could not be saved: ${error.message}`;
+        });
+      }
+    }
+
+    async function updateAccountMatchRecord(client, changes) {
+      if (!client) {
+        return;
+      }
+      try {
+        const { data: userData, error: userError } = await client.auth.getUser();
+        if (userError || !userData.user) {
+          throw userError || new Error("Player account session has expired.");
+        }
+        const { data, error } = await client
+          .from(MATCH_RECORD_TABLE)
+          .select("wins, losses, tied_rounds, player_round_wins, computer_round_wins")
+          .eq("account_id", userData.user.id)
+          .maybeSingle();
+        if (error) {
+          throw error;
+        }
+        const record = {
+          wins: data ? data.wins : 0,
+          losses: data ? data.losses : 0,
+          tied_rounds: data ? data.tied_rounds : 0,
+          player_round_wins: data ? data.player_round_wins : 0,
+          computer_round_wins: data ? data.computer_round_wins : 0
+        };
+        for (const [field, increment] of Object.entries(changes)) {
+          record[field] += increment;
+        }
+        const { error: saveError } = await client.from(MATCH_RECORD_TABLE).upsert({
+          account_id: userData.user.id,
+          ...record
+        }, { onConflict: "account_id" });
+        if (saveError) {
+          throw saveError;
+        }
+      } catch (error) {
+        console.error("Could not update the account match record.", error);
+        document.querySelectorAll("[data-record-storage-status]").forEach(status => {
+          status.textContent = `A player account's totals could not be updated: ${error.message}`;
+        });
+      }
+    }
+
+    // Updates the cumulative match-record display
+    function updateMatchRecord() {
+      document.querySelectorAll('[data-record="wins"]').forEach(value => {
+        value.textContent = matchRecord.wins;
+      });
+      document.querySelectorAll('[data-record="losses"]').forEach(value => {
+        value.textContent = matchRecord.losses;
+      });
+      document.querySelectorAll('[data-record="ties"]').forEach(value => {
+        value.textContent = matchRecord.tiedRounds;
+      });
+      document.querySelectorAll('[data-record="player-round-wins"]').forEach(value => {
+        value.textContent = matchRecord.playerRoundWins;
+      });
+      document.querySelectorAll('[data-record="computer-round-wins"]').forEach(value => {
+        value.textContent = matchRecord.computerRoundWins;
+      });
+    }
+
+    async function resetProfilePassword(accountId, username) {
+      const password = window.prompt(`Enter a new password for ${username} (at least 8 characters):`);
+      if (password === null) {
+        return;
+      }
+      if (password.length < 8) {
+        document.querySelector("#admin-panel-message").textContent =
+          "Passwords must contain at least 8 characters.";
+        return;
+      }
+      try {
+        const { error } = await supabaseClient.functions.invoke("admin-manage-accounts", {
+          body: { action: "reset-password", accountId, newPassword: password }
+        });
+        if (error) {
+          throw error;
+        }
+        document.querySelector("#admin-panel-message").textContent =
+          `${username}'s password was reset.`;
+      } catch (error) {
+        document.querySelector("#admin-panel-message").textContent =
+          `Password could not be reset: ${error.message}`;
+      }
+    }
+
+    async function renderAdminProfiles() {
+      const panel = document.querySelector("#admin-panel");
+      const list = document.querySelector("#admin-user-list");
+      const message = document.querySelector("#admin-panel-message");
+      panel.hidden = !activeProfileIsAdmin;
+      list.replaceChildren();
+      message.textContent = "";
+      if (!activeProfileIsAdmin) {
+        return;
+      }
+
+      try {
+        const { data, error } = await supabaseClient.functions.invoke("admin-manage-accounts", {
+          body: { action: "list" }
+        });
+        if (error) {
+          throw error;
+        }
+        if (!data.accounts.length) {
+          message.textContent = "No player accounts have been created yet.";
+          return;
+        }
+        for (const account of data.accounts) {
+          const card = document.createElement("article");
+          card.className = "admin-user-card";
+          const name = document.createElement("strong");
+          name.textContent = account.username;
+          const resetButton = document.createElement("button");
+          resetButton.type = "button";
+          resetButton.textContent = "Reset password";
+          resetButton.addEventListener("click", () =>
+            resetProfilePassword(account.id, account.username));
+          card.append(name, resetButton);
+          list.append(card);
+        }
+      } catch (error) {
+        message.textContent = `Accounts could not be loaded: ${error.message}`;
+      }
+    }
+
+    async function restoreAccountSession() {
+      if (!supabaseClient) {
+        document.querySelector("#sign-in-error").textContent =
+          "Release setup is incomplete. Add your Supabase URL and public anon key to supabase-config.js.";
+        return;
+      }
+      try {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) {
+          throw error;
+        }
+        if (!data.session) {
+          return;
+        }
+        const profile = await getAccountProfile(supabaseClient, data.session.user);
+        activeProfileId = profile.id;
+        activeProfileUsername = profile.username;
+        activeProfileIsAdmin = profile.role === "admin";
+        if (!await loadMatchRecord()) {
+          throw new Error("Your saved account stats could not be loaded.");
+        }
+        document.querySelector("#profile-greeting").textContent =
+          `Signed in as ${activeProfileUsername}${activeProfileIsAdmin ? " (ADMIN)" : ""}`;
+        document.querySelector("#sign-in-screen").hidden = true;
+        document.querySelector("#home-screen").hidden = false;
+        document.querySelector("#subtitle").textContent = "Choose a game mode to get started.";
+        await renderAdminProfiles();
+      } catch (error) {
+        console.error("Could not restore the player session.", error);
+        document.querySelector("#sign-in-error").textContent =
+          `Your account session could not be restored: ${error.message}`;
+      }
+    }
+
+    // Toggles the saved statistics on the home screen
+    document.querySelector("#record-toggle").addEventListener("click", event => {
+      const record = document.querySelector("#match-record");
+      record.hidden = !record.hidden;
+      event.currentTarget.setAttribute("aria-expanded", String(!record.hidden));
+      event.currentTarget.textContent = record.hidden ? "Show stats" : "Hide stats";
+    });
+
+    document.addEventListener("click", event => {
+      const toggle = event.target.closest("[data-password-toggle]");
+      if (!toggle) {
+        return;
+      }
+      const input = document.getElementById(toggle.dataset.passwordToggle);
+      if (!input) {
+        return;
+      }
+      const showPassword = input.type === "password";
+      input.type = showPassword ? "text" : "password";
+      toggle.textContent = showPassword ? "Hide" : "Show";
+      toggle.setAttribute("aria-label", `${showPassword ? "Hide" : "Show"} password`);
+      toggle.setAttribute("aria-pressed", String(showPassword));
+    });
+
+    document.querySelector("#account-mode-toggle").addEventListener("click", () => {
+      document.querySelector("#profile-name").value = "";
+      document.querySelector("#profile-password").value = "";
+      document.querySelector("#profile-password-confirm").value = "";
+      document.querySelector("#account-email").value = "";
+      setAccountMode(signInMode === "signin" ? "signup" : "signin");
+    });
+    document.querySelector("#sign-in-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const submitButton = event.currentTarget.querySelector('button[type="submit"]');
+      if (submitButton.disabled) {
+        return;
+      }
+      submitButton.disabled = true;
+      const username = document.querySelector("#profile-name").value.trim();
+      const password = document.querySelector("#profile-password").value;
+      const confirmation = document.querySelector("#profile-password-confirm").value;
+      const email = document.querySelector("#account-email").value.trim();
+      let clientForAttempt = null;
+
+      if (!username) {
+        document.querySelector("#profile-name").reportValidity();
+        submitButton.disabled = false;
+        return;
+      }
+
+      try {
+        const client = signInSlot === "player2"
+          ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { autoRefreshToken: true, persistSession: false, detectSessionInUrl: false }
+          })
+          : supabaseClient;
+        clientForAttempt = client;
+        const authResult = await authenticateAccount(
+          client,
+          username,
+          password,
+          confirmation,
+          email
+        );
+        if (authResult.requiresEmailConfirmation) {
+          document.querySelector("#sign-in-error").textContent =
+            "Account created. Check your email to confirm it, then sign in.";
+          return;
+        }
+        const user = authResult.data.user || authResult.data.session.user;
+        const profile = await getAccountProfile(client, user);
+
+        if (signInSlot === "player2") {
+          if (profile.id === activeProfileId) {
+            await client.auth.signOut();
+            throw new Error("Player 2 must use a different account from Player 1.");
+          }
+          playerTwoClient = client;
+          playerTwoUsername = profile.username;
+          signInSlot = "player1";
+          document.querySelector("#sign-in-screen").hidden = true;
+          document.querySelector("#subtitle").textContent =
+            "Both player accounts are signed in.";
+          startGame("two-player");
+        } else {
+          activeProfileId = profile.id;
+          activeProfileUsername = profile.username;
+          activeProfileIsAdmin = profile.role === "admin";
+          playerTwoUsername = null;
+          playerTwoClient = null;
+          document.querySelectorAll("[data-record-storage-status]").forEach(status => {
+            status.textContent = "";
+          });
+          if (!await loadMatchRecord()) {
+            throw new Error("Your saved account stats could not be loaded.");
+          }
+          document.querySelector("#profile-greeting").textContent =
+            `Signed in as ${activeProfileUsername}${activeProfileIsAdmin ? " (ADMIN)" : ""}`;
+          document.querySelector("#sign-in-screen").hidden = true;
+          document.querySelector("#home-screen").hidden = false;
+          document.querySelector("#subtitle").textContent =
+            "Choose a game mode to get started.";
+          await renderAdminProfiles();
+        }
+      } catch (error) {
+        console.error("Could not authenticate the player account.", error);
+        if (signInSlot === "player2" && clientForAttempt) {
+          await clientForAttempt.auth.signOut();
+        } else if (signInSlot === "player1" && supabaseClient) {
+          await supabaseClient.auth.signOut();
+          activeProfileId = null;
+          activeProfileUsername = null;
+          activeProfileIsAdmin = false;
+        }
+        document.querySelector("#sign-in-error").textContent = error.message;
+        document.querySelector("#profile-password").value = "";
+        document.querySelector("#profile-password-confirm").value = "";
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+
+    document.querySelector("#switch-account").addEventListener("click", async () => {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
+      if (playerTwoClient) {
+        await playerTwoClient.auth.signOut();
+      }
+      activeProfileId = null;
+      activeProfileUsername = null;
+      activeProfileIsAdmin = false;
+      playerTwoUsername = null;
+      playerTwoClient = null;
+      signInSlot = "player1";
+      document.querySelector("#match-record").hidden = true;
+      document.querySelector("#admin-panel").hidden = true;
+      document.querySelector("#record-toggle").textContent = "Show stats";
+      document.querySelector("#record-toggle").setAttribute("aria-expanded", "false");
+      document.querySelector("#home-screen").hidden = true;
+      document.querySelector("#sign-in-screen").hidden = false;
+      document.querySelector("#profile-name").value = "";
+      document.querySelector("#profile-password").value = "";
+      document.querySelector("#profile-password-confirm").value = "";
+      document.querySelector("#account-email").value = "";
+      setAccountMode("signin");
+      document.querySelector("#profile-name").focus();
+    });
+
+    // Starts a selected game mode and prepares a fresh scoreboard
+    function startGame(mode) {
+      if (!activeProfileId || (mode === "two-player" && !playerTwoClient)) {
+        return;
+      }
+      // Stops a mode button from changing the mode while a game is already in progress.
+      if (!document.querySelector("#game-screen").hidden) {
+        return; // Mode changes are only allowed from the home screen.
+      }
+
+      gameMode = mode; // Saves the mode chosen by the player.
+      matchFormat = document.querySelector('input[name="match-format"]:checked').value; // Saves the selected match length.
+      resetScore(); // Clears old scores and selections before starting.
+      document.querySelector("#home-screen").hidden = true; // Hides the mode-selection home screen.
+      document.querySelector("#game-screen").hidden = false; // Shows the game interface.
+      // Shows instructions appropriate for the selected mode.
+      document.querySelector("#subtitle").textContent = mode === "two-player"
+        ? "Take turns choosing your moves on the same device."
+        : "Pick a move and see if you can beat the computer.";
+      document.querySelector("#reset").textContent =
+        mode === "two-player" ? "Restart match" : "Reset score"; // Labels the reset button for the selected mode.
+      document.querySelector("#player-score-label").textContent = mode === "two-player"
+        ? (playerTwoUsername ? `Player 1: ${activeProfileUsername}` : "Player 1")
+        : "You";
+      document.querySelector("#computer-score-label").textContent = mode === "two-player"
+        ? (playerTwoUsername ? `Player 2: ${playerTwoUsername}` : "Player 2")
+        : "Computer";
+      // Updates the labels beneath the displayed choices.
+      document.querySelector("#player-one-label").textContent = mode === "two-player" ? "PLAYER 1" : "YOU";
+      document.querySelector("#player-two-label").textContent = mode === "two-player" ? "PLAYER 2" : "COMPUTER";
+      // Tells the correct player what to do first.
+      document.querySelector("#prompt").textContent = mode === "two-player"
+        ? "Player 1: choose your move"
+        : "Make your move";
+      // Displays the initial instructions for the chosen mode.
+      document.querySelector("#detail").textContent = mode === "two-player"
+        ? "Player 1 chooses first. Player 2 will choose next."
+        : matchFormat === "single-round"
+          ? "One round decides the match. Ties are replayed."
+          : `First to ${WINS_TO_TAKE_MATCH} wins takes the match.`;
+    }
+
+    // Runs one computer round or collects both players' moves
+    async function play(playerChoice) {
+      if (!Object.prototype.hasOwnProperty.call(options, playerChoice)) {
+        return;
+      }
+      if (matchFinished) {
+        return; // Prevents moves after the selected match has ended.
+      }
+
+      // Sends moves to the local two-player flow when that mode is active.
+      if (gameMode === "two-player") {
+        playTwoPlayerRound(playerChoice); // Records one player's move or finishes the round.
+        return; // Prevents computer mode logic from running for a two-player round.
+      }
+
+      const choices = Object.keys(options); // Makes a list of the possible computer moves.
+      // Excludes the previous computer move when there are other moves available.
+      const availableChoices = choices.filter(choice => choice !== lastComputerChoice);
+      // Randomly chooses from the remaining moves so the computer does not repeat the same move twice in a row.
+      const computerChoices = availableChoices.length > 0 ? availableChoices : choices;
+      const computerChoice = computerChoices[Math.floor(Math.random() * computerChoices.length)];
+      const computerEmoji = options[computerChoice].emoji; // Uses the one emoji assigned to the computer's randomly chosen move.
+      lastComputerChoice = computerChoice; // Saves the move so the next round can avoid repeating it.
+      document.querySelectorAll("[data-choice]").forEach(button => {
+        button.disabled = true; // Prevents another move during the countdown.
+      });
+      document.querySelector("#reset").disabled = true; // Prevents resetting during the reveal.
+      document.querySelector("#home-button").disabled = true; // Prevents leaving midway through the reveal.
+      document.querySelector("#arena").hidden = true; // Keeps both moves hidden during the countdown.
+      document.querySelector("#prompt").textContent = "Choices locked in!"; // Confirms the player's move is locked.
+      document.querySelector("#result").textContent = "Get ready for the reveal!"; // Announces the countdown.
+      document.querySelector("#detail").textContent = "Rock, paper, scissors..."; // Builds anticipation before showing the moves.
+      const countdownPanel = document.querySelector("#reveal-countdown"); // Gets the animated countdown panel.
+      const countdownNumber = document.querySelector("#countdown-number"); // Gets the number displayed in the countdown.
+      countdownPanel.hidden = false; // Shows the animated emojis and countdown.
+
+      // Counts down from three before revealing the computer's choice.
+      for (let count = 3; count >= 1; count -= 1) {
+        countdownNumber.textContent = count; // Displays the current countdown number.
+        playSound([{ frequency: count === 1 ? 880 : 660, delay: 0, duration: 0.12 }]);
+        await new Promise(resolve => window.setTimeout(resolve, 800)); // Waits briefly before showing the next number.
+      }
+
+      countdownPanel.hidden = true; // Hides the countdown after it finishes.
+      document.querySelector("#arena").hidden = false; // Shows the arena to reveal both moves.
+      document.querySelector("#player-pick").textContent = options[playerChoice].emoji; // Shows the player's move emoji.
+      document.querySelector("#computer-pick").textContent = computerEmoji; // Shows the computer's move emoji.
+      document.querySelector("#prompt").textContent = "Make your move"; // Restores the prompt for the next round.
+
+      // Adds a tie point if both sides chose the same move.
+      if (playerChoice === computerChoice) {
+        scores.tie += 1; // Increases the tie counter.
+        matchRecord.tiedRounds += 1;
+        playRoundSound("tie");
+        document.querySelector("#result").textContent = "It's a tie!"; // Announces the tie.
+        document.querySelector("#detail").textContent = `You both picked ${options[playerChoice].emoji} ${options[playerChoice].label}. Computer picked ${computerEmoji}.`; // Explains the matching picks.
+      // Checks whether the player's move beats the computer's move.
+      } else if (beats[playerChoice] === computerChoice) {
+        scores.player += 1; // Gives the player a point.
+        matchRecord.playerRoundWins += 1;
+        playRoundSound("win");
+        document.querySelector("#result").textContent = "You win this round! 🎉"; // Announces the player's win.
+        document.querySelector("#detail").textContent = `You picked ${options[playerChoice].emoji} ${options[playerChoice].label}. Computer picked ${computerEmoji} ${options[computerChoice].label}. ${options[playerChoice].label} beats ${options[computerChoice].label}.`; // Lists both moves and why the player won.
+      // If neither side tied nor the player won, the computer wins the round.
+      } else {
+        scores.computer += 1; // Gives the computer a point.
+        matchRecord.computerRoundWins += 1;
+        playRoundSound("loss");
+        document.querySelector("#result").textContent = "Computer wins this round!"; // Announces the computer's win.
+        document.querySelector("#detail").textContent = `You picked ${options[playerChoice].emoji} ${options[playerChoice].label}. Computer picked ${computerEmoji} ${options[computerChoice].label}. ${options[computerChoice].label} beats ${options[playerChoice].label}.`; // Lists both moves and why the computer won.
+      }
+      updateScore();
+      await saveMatchRecord();
+      document.querySelector("#reset").disabled = false; // Allows resetting after the reveal.
+      if (!await completeMatchIfWon()) {
+        document.querySelectorAll("[data-choice]").forEach(button => {
+          button.disabled = false; // Allows another round after the reveal.
+        });
+        if (matchFormat === "single-round") {
+          document.querySelector("#detail").textContent += " It's a tie—play again to decide the match.";
+        } else {
+          document.querySelector("#detail").textContent += " Keep playing until someone reaches the match target.";
+        }
+      }
+    }
+
+    // Collects both local players' moves without revealing the first move early
+    async function playTwoPlayerRound(playerChoice) {
+      if (matchFinished) {
+        return; // Waits for the players to start a new match before accepting more moves.
+      }
+
+      // Stores Player 1's move and switches to Player 2 without revealing the move.
+      if (activePlayer === 1) {
+        firstPlayerChoice = playerChoice; // Saves Player 1's selection privately until Player 2 chooses.
+        activePlayer = 2; // Makes Player 2 the next active player.
+        document.querySelector("#player-pick").textContent = "🔒"; // Hides Player 1's move on the screen.
+        document.querySelector("#computer-pick").textContent = "❔"; // Keeps Player 2's move blank until chosen.
+        document.querySelector("#prompt").textContent = "Player 2: choose your move"; // Prompts Player 2.
+        document.querySelector("#result").textContent = "Pass the device to Player 2"; // Tells players to hand over the device.
+        document.querySelector("#detail").textContent = "Player 1's move is hidden until Player 2 has chosen."; // Explains that the first move is hidden.
+        return; // Waits for Player 2's selection before deciding the round.
+      }
+
+      const secondPlayerChoice = playerChoice; // Saves Player 2's move for comparison.
+      activePlayer = 0; // Marks that both players have chosen and the reveal is running.
+      document.querySelectorAll("[data-choice]").forEach(button => {
+        button.disabled = true; // Prevents further choices during the countdown.
+      });
+      document.querySelector("#reset").disabled = true; // Keeps the match from resetting during its reveal.
+      document.querySelector("#home-button").disabled = true; // Prevents leaving midway through the reveal.
+      document.querySelector("#arena").hidden = true; // Keeps the hidden selections from appearing during the countdown.
+      document.querySelector("#prompt").textContent = "Choices locked in!"; // Confirms both players have picked.
+      document.querySelector("#result").textContent = "Get ready for the reveal!"; // Announces the countdown.
+      document.querySelector("#detail").textContent = "Rock, paper, scissors..."; // Builds anticipation before showing the moves.
+      const countdownPanel = document.querySelector("#reveal-countdown"); // Gets the animated countdown panel.
+      const countdownNumber = document.querySelector("#countdown-number"); // Gets the number displayed in the countdown.
+      countdownPanel.hidden = false; // Shows the animated emojis and countdown.
+
+      // Counts down from three before revealing the players' hidden choices.
+      for (let count = 3; count >= 1; count -= 1) {
+        countdownNumber.textContent = count; // Displays the current countdown number.
+        playSound([{ frequency: count === 1 ? 880 : 660, delay: 0, duration: 0.12 }]);
+        await new Promise(resolve => window.setTimeout(resolve, 800)); // Waits briefly before showing the next number.
+      }
+
+      countdownPanel.hidden = true; // Hides the countdown after it finishes.
+      document.querySelector("#arena").hidden = false; // Shows the arena to reveal both players' moves.
+      document.querySelector("#player-pick").textContent = options[firstPlayerChoice].emoji; // Reveals Player 1's move after both have chosen.
+      document.querySelector("#computer-pick").textContent = options[secondPlayerChoice].emoji; // Shows Player 2's move.
+
+      // Adds a tie point when both players picked the same move.
+      if (firstPlayerChoice === secondPlayerChoice) {
+        scores.tie += 1; // Increases the tie counter.
+        matchRecord.tiedRounds += 1;
+        await updateAccountMatchRecord(playerTwoClient, { tied_rounds: 1 });
+        playRoundSound("tie");
+        document.querySelector("#result").textContent = "It's a tie!"; // Announces the tie.
+      // Checks whether Player 1's move beats Player 2's move.
+      } else if (beats[firstPlayerChoice] === secondPlayerChoice) {
+        scores.player += 1; // Adds a point to Player 1's score.
+        matchRecord.playerRoundWins += 1;
+        await updateAccountMatchRecord(playerTwoClient, { computer_round_wins: 1 });
+        playRoundSound("win");
+        document.querySelector("#result").textContent = "Player 1 wins this round!"; // Announces Player 1's win.
+      // If neither player tied nor Player 1 won, Player 2 wins the round.
+      } else {
+        scores.computer += 1; // Adds a point to Player 2's score.
+        matchRecord.computerRoundWins += 1;
+        await updateAccountMatchRecord(playerTwoClient, { player_round_wins: 1 });
+        playRoundSound("loss");
+        document.querySelector("#result").textContent = "Player 2 wins this round!"; // Announces Player 2's win.
+      }
+
+      // Shows both players' moves using their emoji and readable move names.
+      document.querySelector("#detail").textContent =
+        `Player 1 picked ${options[firstPlayerChoice].emoji} ${options[firstPlayerChoice].label}. ` +
+        `Player 2 picked ${options[secondPlayerChoice].emoji} ${options[secondPlayerChoice].label}.`;
+      firstPlayerChoice = null; // Clears Player 1's saved move for the next round.
+      activePlayer = 1; // Sets Player 1 as the first chooser for the next round.
+      updateScore();
+      await saveMatchRecord();
+      document.querySelector("#reset").disabled = false; // Allows restarting or starting a new match after the reveal.
+
+      if (await completeMatchIfWon()) {
+        return; // Leaves the winning score displayed until the next match starts.
+      }
+
+      document.querySelector("#prompt").textContent = "Player 1: choose your move"; // Prompts Player 1 for the next round.
+      if (matchFormat === "single-round") {
+        document.querySelector("#detail").textContent += " It's a tie—play again to decide the match.";
+      } else {
+        document.querySelector("#detail").textContent += " Keep playing until someone reaches the match target.";
+      }
+      document.querySelectorAll("[data-choice]").forEach(button => {
+        button.disabled = false; // Allows the next round after the reveal.
+      });
+    }
+
+    // Ends the selected match when one side reaches its win target
+    async function completeMatchIfWon() {
+      const winTarget = matchFormat === "single-round" ? 1 : WINS_TO_TAKE_MATCH;
+      const firstSide = gameMode === "two-player" ? "Player 1" : "You";
+      const secondSide = gameMode === "two-player" ? "Player 2" : "Computer";
+      const matchWinner = scores.player >= winTarget
+        ? firstSide
+        : scores.computer >= winTarget
+          ? secondSide
+          : null;
+
+      if (!matchWinner) {
+        return false;
+      }
+
+      if (scores.player >= winTarget || scores.computer >= winTarget) {
+        celebrateWinner();
+      }
+      if (scores.player >= winTarget) {
+        matchRecord.wins += 1;
+      } else {
+        matchRecord.losses += 1;
+      }
+      await saveMatchRecord();
+      if (gameMode === "two-player") {
+        if (scores.player >= winTarget) {
+          await updateAccountMatchRecord(playerTwoClient, { losses: 1 });
+        } else {
+          await updateAccountMatchRecord(playerTwoClient, { wins: 1 });
+        }
+      }
+      matchFinished = true;
+      playSound(scores.player >= winTarget
+        ? [523, 659, 784, 1047].map((frequency, index) => ({ frequency, delay: index * 0.12, duration: 0.24 }))
+        : [392, 330, 262].map((frequency, index) => ({ frequency, delay: index * 0.16, duration: 0.28 })));
+      document.querySelector("#prompt").textContent = "Match complete";
+      document.querySelector("#result").textContent =
+        `${matchWinner === "You" ? "You win" : `${matchWinner} wins`} the match! 🏆`;
+      document.querySelector("#detail").textContent = "Match results are saved in the overall record on the home page.";
+      document.querySelectorAll("[data-choice]").forEach(button => {
+        button.disabled = true;
+      });
+      document.querySelector("#home-button").disabled = false;
+      document.querySelector("#reset").textContent = "Play again";
+      return true;
+    }
+
+    function celebrateWinner() {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        return;
+      }
+
+      const confetti = document.querySelector("#confetti");
+      confetti.replaceChildren();
+      for (let index = 0; index < 70; index += 1) {
+        const piece = document.createElement("span");
+        piece.className = "confetti-piece";
+        piece.style.setProperty("--confetti-left", `${Math.random() * 100}%`);
+        piece.style.setProperty("--confetti-color", CONFETTI_COLORS[index % CONFETTI_COLORS.length]);
+        piece.style.setProperty("--confetti-duration", `${2.5 + Math.random() * 2}s`);
+        piece.style.setProperty("--confetti-delay", `${Math.random() * 0.8}s`);
+        piece.style.setProperty("--confetti-drift", `${Math.random() * 240 - 120}px`);
+        piece.style.setProperty("--confetti-rotation", `${Math.random() * 1080 - 540}deg`);
+        piece.addEventListener("animationend", () => piece.remove(), { once: true });
+        confetti.append(piece);
+      }
+    }
+
+    // Updates the visible current-match score
+    function updateScore() {
+      document.querySelector("#player-score").textContent = scores.player;
+      document.querySelector("#tie-score").textContent = scores.tie;
+      document.querySelector("#computer-score").textContent = scores.computer;
+    }
+
+    // Clears all scores and resets the board to its starting state
+    function resetScore() {
+      document.querySelector("#confetti").replaceChildren();
+      scores.player = 0; // Clears the first side's score.
+      scores.tie = 0; // Clears the tie count.
+      scores.computer = 0; // Clears the second side's score.
+      updateScore();
+      document.querySelector("#player-pick").textContent = "❔"; // Clears the first side's displayed move.
+      document.querySelector("#computer-pick").textContent = "❔"; // Clears the second side's displayed move.
+      document.querySelector("#reveal-countdown").hidden = true; // Hides any active reveal countdown.
+      document.querySelector("#arena").hidden = false; // Restores the arena after resetting the round.
+      document.querySelector("#reset").disabled = false; // Makes reset available after clearing the round.
+      document.querySelector("#home-button").disabled = true; // Keeps the mode locked until the match is complete.
+      lastComputerChoice = null; // Clears the previous computer move.
+      firstPlayerChoice = null; // Removes any unfinished Player 1 choice.
+      activePlayer = 1; // Starts the next local round with Player 1.
+      matchFinished = false; // Makes a fresh match playable again.
+      document.querySelectorAll("[data-choice]").forEach(button => {
+        button.disabled = false; // Enables move choices for the new game or match.
+      });
+      document.querySelector("#reset").textContent =
+        gameMode === "two-player" ? "Restart match" : "Reset score"; // Labels reset according to the active mode.
+      document.querySelector("#result").textContent = "Your move!"; // Restores the initial result message.
+      document.querySelector("#detail").textContent = matchFormat === "single-round"
+        ? "One round decides the match. Ties are replayed."
+        : `First to ${WINS_TO_TAKE_MATCH} wins takes the match.`;
+      const prompt = document.querySelector("#prompt"); // Gets the game prompt element.
+      // Changes the prompt only when the game screen is present.
+      if (prompt) {
+        prompt.textContent = gameMode === "two-player" ? "Player 1: choose your move" : "Make your move"; // Uses the right prompt for the active mode.
+      }
+    }
+
+    loadPageColor();
+    loadThemeColor();
+    loadSoundSetting();
+    setAccountMode("signin");
+    restoreAccountSession();
+    function saveSoundSetting() {
+      try {
+        window.localStorage.setItem(SOUND_ENABLED_STORAGE_KEY, String(soundEnabled));
+        window.localStorage.setItem(SOUND_VOLUME_STORAGE_KEY, String(soundVolume));
+        document.querySelector("#settings-message").textContent = "Sound settings saved.";
+      } catch (error) {
+        console.error("Could not save sound settings.", error);
+        document.querySelector("#settings-message").textContent =
+          `Sound settings changed, but could not be saved: ${error.message}`;
+      }
+    }
+
+    document.querySelector("#sound-enabled").addEventListener("change", event => {
+      soundEnabled = event.currentTarget.checked;
+      saveSoundSetting();
+    });
+    document.querySelector("#sound-volume").addEventListener("input", event => {
+      soundVolume = Number(event.currentTarget.value);
+      document.querySelector("#sound-volume-value").textContent = `${soundVolume}%`;
+      saveSoundSetting();
+    });
+    document.querySelector("#page-color").addEventListener("input", event => {
+      const color = event.currentTarget.value;
+      applyPageColor(color);
+      try {
+        window.localStorage.setItem(PAGE_BACKGROUND_COLOR_STORAGE_KEY, color);
+        document.querySelector("#settings-message").textContent = "Background color saved.";
+      } catch (error) {
+        console.error("Could not save the page color.", error);
+        document.querySelector("#settings-message").textContent =
+          `Background color changed, but could not be saved: ${error.message}`;
+      }
+    });
+    document.querySelector("#theme-color").addEventListener("input", event => {
+      const color = event.currentTarget.value;
+      applyThemeColor(color);
+      try {
+        window.localStorage.setItem(THEME_COLOR_STORAGE_KEY, color);
+        document.querySelector("#settings-message").textContent = "Game color saved.";
+      } catch (error) {
+        console.error("Could not save the game color.", error);
+        document.querySelector("#settings-message").textContent =
+          `Game color changed, but could not be saved: ${error.message}`;
+      }
+    });
+
+    // Connects home page mode buttons to the game
+    document.querySelectorAll("[data-mode]").forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.dataset.mode === "two-player" && !playerTwoClient) {
+          signInSlot = "player2";
+          document.querySelector("#home-screen").hidden = true;
+          document.querySelector("#sign-in-screen").hidden = false;
+          document.querySelector("#profile-name").value = "";
+          document.querySelector("#profile-password").value = "";
+          document.querySelector("#profile-password-confirm").value = "";
+          document.querySelector("#account-email").value = "";
+          setAccountMode("signin");
+          document.querySelector("#sign-in-heading").textContent =
+            "Player 2: sign in or create an account";
+          document.querySelector("#profile-name").focus();
+          return;
+        }
+        startGame(button.dataset.mode);
+      });
+    });
+    // Connects each player move button to the game logic
+    document.querySelectorAll("[data-choice]").forEach(button => {
+      button.addEventListener("click", () => play(button.dataset.choice)); // Plays the move named by the clicked choice button.
+    });
+    // Binds the reset button to the reset logic
+    document.querySelector("#reset").addEventListener("click", resetScore); // Resets scores and choices when clicked.
+    // Returns to the home page and starts a clean game when a mode is selected again
+    document.querySelector("#home-button").addEventListener("click", () => {
+      if (!matchFinished) {
+        return; // Mode changes are only allowed after the match is complete.
+      }
+
+      resetScore(); // Clears the current game before leaving it.
+      gameMode = null; // Marks that no mode is active while on the home screen.
+      document.querySelector("#game-screen").hidden = true; // Hides the active game.
+      document.querySelector("#home-screen").hidden = false; // Shows the mode-selection home screen.
+      document.querySelector("#subtitle").textContent = "Choose a game mode to get started."; // Restores the home-screen instructions.
+    });
+  </script>
+</body>
+</html>
